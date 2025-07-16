@@ -1,17 +1,22 @@
 package br.com.spring.primeiro.projeto.main;
 
 import br.com.spring.primeiro.projeto.models.EpisodeRecord;
+import br.com.spring.primeiro.projeto.models.Episodio;
 import br.com.spring.primeiro.projeto.models.SeasonRecord;
 import br.com.spring.primeiro.projeto.models.SerieRecord;
 import br.com.spring.primeiro.projeto.services.ConsumoApi;
 import br.com.spring.primeiro.projeto.services.ConverteDados;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 public class Main {
-    private  ConsumoApi consumoApi = new ConsumoApi();
+    private  final ConsumoApi consumoApi = new ConsumoApi();
     private final String ENDERECO = "https://www.omdbapi.com/?t=";
     private final String API_KEY = "&apikey=d2555974";
     private  ConverteDados conversor = new ConverteDados();
@@ -36,12 +41,40 @@ public class Main {
             }
             listaTempordas.forEach(System.out::println);
 
-            for (int i = 0; i < dadosSerie.totalTemporadas(); i++) {
-                List<EpisodeRecord> listaEpisodios = listaTempordas.get(i).episodio();
-                for (int j =0; j < listaEpisodios.size(); j++) {
-                    
-                }
-            }
+            listaTempordas.forEach(t -> t.episodio().forEach(e -> System.out.println(e.titulo())));
+
+            List<EpisodeRecord> listaDadosSerie = listaTempordas.stream()
+                    .flatMap(t -> t.episodio().stream())
+                    .collect(Collectors.toList());
+
+            System.out.println("\n TOP 5 EPS");
+            listaDadosSerie.stream()
+                    .filter(e -> !e.avaliacao().equalsIgnoreCase("N/A"))
+                    .sorted(Comparator.comparing(EpisodeRecord::avaliacao).reversed())
+                    .limit(5)
+                    .forEach(System.out::println);
+
+            List<Episodio> episodios= listaTempordas.stream()
+                    .flatMap(t -> t.episodio().stream()
+                            .map(d -> new Episodio(t.numero(), d))
+                    ).collect(Collectors.toList());
+
+            System.out.println("A parir de qual ano você deseja consultar os episódios ?");
+            var ano = scanner.nextInt();
+            scanner.nextLine();
+
+            LocalDate dataBusca = LocalDate.of(ano,1,1);
+            DateTimeFormatter formatador = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+            episodios.stream()
+                    .filter(e -> e.getDataDeLancamento() != null && e.getDataDeLancamento().isAfter(dataBusca))
+                    .forEach(e -> System.out.println(
+                            "Temporada: " + e.getTemporada() +
+                            " Episódio: " + e.getTitulo() +
+                            " Data de lançamento: " + e.getDataDeLancamento().format(formatador)
+
+                    ));
+
         } catch (NullPointerException e) {
             System.out.println(e.getMessage());
         }
